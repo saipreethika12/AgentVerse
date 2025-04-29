@@ -1,6 +1,12 @@
 import gym
 import gym_chess
 import chess
+import time
+import chess.svg
+import cairosvg
+import io
+from PIL import ImageDraw, ImageFont, Image
+
 
 # --- Evaluation Function ---
 def evaluate_board(board):
@@ -110,6 +116,58 @@ def evaluate_board(board):
     return value
 
 
+def board_to_image(board, move_number=None):
+    svg_data = chess.svg.board(board=board)
+    png_bytes = cairosvg.svg2png(bytestring=svg_data.encode('utf-8'))
+    image = Image.open(io.BytesIO(png_bytes)).convert("RGB")
+
+    if move_number is not None:
+        draw = ImageDraw.Draw(image)
+        try:
+            font = ImageFont.truetype("arial.ttf", size=24)
+        except:
+            font = ImageFont.load_default()
+
+        text = f"Move {move_number}"
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        image_width, image_height = image.size
+        position = (15, image_height - text_height - 25)
+
+        draw.text(position, text, fill="black", font=font)
+
+
+    return image
+
+def create_gif_from_images(images, output_path, duration=500):
+    images[0].save(output_path, save_all=True, append_images=images[1:], duration=duration, loop=0)
+    
+def final_board_with_stats(board, result, move_count):
+    image = board_to_image(board)  # get the final board image
+
+    draw = ImageDraw.Draw(image)
+    try:
+        big_font = ImageFont.truetype("arial.ttf", size=48)
+        small_font = ImageFont.truetype("arial.ttf", size=28)
+    except:
+        big_font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
+
+    # Text values
+    result_text = f"Result: {result}"
+    moves_text = f"Moves: {move_count}"
+
+    # Positioning
+    width, height = image.size
+    spacing = 40
+
+    draw.text((50, 150), result_text, fill="black", font=big_font)
+    draw.text((130, 250), moves_text, fill="black", font=small_font)
+
+    return image
+
+
 
 # --- Alpha-Beta Pruning ---
 def alpha_beta(board, depth, alpha, beta, maximizing):
@@ -156,10 +214,14 @@ def play_game_with_alpha_beta(depth=3):
     print(board.unicode())
 
     done = False
-    move_count = 1
+    move_count = 0
+    start_time = time.time()
+    images=[]
+    images.append(board_to_image(board,move_count))
 
     while not done:
         # White Move
+        if board.turn == chess.WHITE: move_count += 1
         if board.turn == chess.WHITE:
             _, move = alpha_beta(board, depth, float('-inf'), float('inf'), maximizing=True)
             if move is None:
@@ -168,6 +230,7 @@ def play_game_with_alpha_beta(depth=3):
             env.step(move)
             print(f"\nMove {move_count} White: {move.uci()}")
             print(board.unicode())
+            images.append(board_to_image(board,move_count))
             if board.is_game_over():
                 break
 
@@ -180,16 +243,27 @@ def play_game_with_alpha_beta(depth=3):
             env.step(move)
             print(f"\nMove {move_count} Black: {move.uci()}")
             print(board.unicode())
+            images.append(board_to_image(board,move_count))
+            print("-" * 30)
             if board.is_game_over():
                 break
 
-        move_count += 1
 
-    print("\nGame Over!")
-    print("Result:", board.result())
+    end_time = time.time()
+    total_time = end_time - start_time
+    for i in range(10): images.append(final_board_with_stats(board, board.result(), move_count))
+    print("Game Over")
+    print(f"Result: {board.result()}")
+    print("Algoritm used: Alpha-Beta Pruning")
+    print(f"Depth: {depth}")
+    print(f"Total Moves: {move_count}")
+    print(f"Total Time Taken: {total_time:.2f} seconds")
+    create_gif_from_images(images,f"chess_game_depth_{depth}.gif")
+    print(f"GIF saved as 'chess_game_depth_{depth}.gif'")
+
 
 
 # --- Run the game ---
 if __name__ == "__main__":
-    play_game_with_alpha_beta(depth=3)
+    play_game_with_alpha_beta(depth=4)
 
