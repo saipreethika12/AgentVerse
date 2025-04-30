@@ -36,3 +36,12 @@ python Minimax.py
 python AlphaBeta.py
 ```
 
+## Game visualization
+### Depth 2
+![Local GIF](./gifs_and_outputs/chess_game_depth_2.gif)
+### Depth 3
+![Local GIF](./gifs_and_outputs/chess_game_depth_3.gif)
+### Depth 4
+![Local GIF](./gifs_and_outputs/chess_game_depth_4.gif)
+
+
